@@ -5,54 +5,271 @@
   <title>Submit Review</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;padding:20px;max-width:720px;margin:auto}
-    label{display:block;margin-top:12px}
-    input,textarea,select{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:6px}
-    button{margin-top:12px;padding:10px 16px;border:none;background:#0a6cff;color:#fff;border-radius:6px;cursor:pointer}
-    .msg{margin-top:12px}
-    
+    :root{
+      --accent: #0a6cff;
+      --muted: #6b7680;
+      --card-bg: #fff;
+      --border: #e6eef9;
+      --radius: 10px;
+      --maxwidth: 980px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      margin: 20px;
+      display: flex;
+      justify-content: center;
+      color: #122028;
+    }
+    .wrap {
+      width: 100%;
+      max-width: var(--maxwidth);
+      box-sizing: border-box;
+      padding: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: 0 8px 28px rgba(13,30,60,0.04);
+      margin-bottom: 18px;
+    }
+
+    h1{ margin:0 0 6px; font-size:20px; color:var(--accent) }
+    p.lead { margin: 0 0 12px; color:var(--muted); font-size:14px }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 14px;
+    }
+    @media (max-width:880px){ .form-grid{ grid-template-columns: 1fr; } }
+
+    label { display:block; font-weight:600; margin-bottom:6px; color:#22323a; font-size:13px; }
+    input[type="text"], textarea, select, input[type="file"] {
+      width:100%; padding:10px 12px; border-radius:8px; border:1px solid #dbe7f5; box-sizing:border-box; font-size:14px;
+      background:#fff; color:#0c2138;
+    }
+    textarea { min-height:110px; resize:vertical; }
+
+    .preview {
+      height: 170px;
+      border-radius:8px;
+      border: 1px dashed var(--border);
+      display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(180deg,#fbfdff,#fff);
+      overflow:hidden;
+      color:#93a3b2; font-weight:700;
+    }
+    .preview img { width:100%; height:100%; object-fit:cover; display:block; }
+
+    .actions { display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .btn { background:var(--accent); color:#fff; padding:10px 14px; border-radius:8px; border: none; cursor:pointer; font-weight:700; }
+    .btn.ghost { background:transparent; color:#233244; border:1px solid #e6eef9; }
+    .msg { font-size:13px; color:#155724; margin-left:6px; min-height:18px; }
+
+    /* Reviews grid (optional small demo) */
+    .r-grid { margin-top:18px; display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+    .r-card { background:#fff; border:1px solid #eef2f6; border-radius:8px; overflow:hidden; box-shadow:0 6px 18px rgba(8,17,34,0.04); }
+    .r-thumb{ height:150px; width:100%; object-fit:cover; display:block; }
+    .r-body{ padding:12px; }
+    .r-name{ font-weight:700; font-size:14px; color:#102031; }
+    .r-stars{ color:#ffb400; font-weight:700; margin:6px 0; }
+    .r-text{ color:#374151; font-size:13px; line-height:1.45; white-space:pre-wrap; max-height:4.5em; overflow:hidden; text-overflow:ellipsis; }
+
+    .toast {
+      position:fixed; right:18px; bottom:18px; background:var(--accent); color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:9999; font-weight:700;
+      box-shadow:0 8px 30px rgba(3,27,76,0.18);
+    }
+    .toast.show { display:block; animation:pop .18s ease; }
+    @keyframes pop { from{ transform:translateY(8px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
   </style>
 </head>
 <body>
-  <h2>Submit your Fan Review</h2>
-  <p>Share a photo of your jersey and your review. Reviews are published after approval.</p>
+  <div class="wrap">
+    <div class="card">
+      <h1>Submit your Fan Review</h1>
+      <p class="lead">Share a photo of your jersey and your honest review. Reviews publish after approval.</p>
 
-  <form id="reviewForm" enctype="multipart/form-data">
-    <label>Your name <input name="name" required /></label>
-    <label>City (optional) <input name="city" /></label>
-    <label>Rating <select name="rating">
-      <option value="5">5 - Excellent</option>
-      <option value="4">4 - Very good</option>
-      <option value="3">3 - Good</option>
-      <option value="2">2 - Fair</option>
-      <option value="1">1 - Poor</option>
-    </select></label>
-    <label>Review <textarea name="text" rows="5" required></textarea></label>
-    <label>Photo (optional) <input type="file" name="image" accept="image/*" /></label>
-    <button type="submit">Submit review</button>
-  </form>
+      <form id="reviewForm" class="form-grid" enctype="multipart/form-data" autocomplete="off">
+        <div>
+          <div style="margin-bottom:10px;">
+            <label for="name">Your name</label>
+            <input id="name" name="name" type="text" placeholder="e.g. Saravana Kumar" required />
+          </div>
 
-  <div class="msg" id="msg"></div>
+          <div style="margin-bottom:10px;">
+            <label for="city">City (optional)</label>
+            <input id="city" name="city" type="text" placeholder="Chennai" />
+          </div>
 
-  <script>
-  document.getElementById('reviewForm').addEventListener('submit', async (e)=>{
+          <div style="margin-bottom:10px;">
+            <label for="rating">Rating</label>
+            <select id="rating" name="rating">
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Very good</option>
+              <option value="3">3 - Good</option>
+              <option value="2">2 - Fair</option>
+              <option value="1">1 - Poor</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:6px;">
+            <label for="text">Review</label>
+            <textarea id="text" name="text" placeholder="Tell others about your experience..." required maxlength="1000"></textarea>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn" id="submitBtn">Submit review</button>
+            <button type="button" class="btn ghost" id="clearBtn">Clear</button>
+            <div class="msg" id="msg"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="preview" id="imgPreview">photo</div>
+
+          <div style="margin-top:10px;">
+            <label for="image">Photo (optional)</label>
+            <input id="image" name="image" type="file" accept="image/*" />
+            <div style="font-size:12px;color:#6b7680;margin-top:6px;">JPEG/PNG up to 5MB. We'll show as thumbnail.</div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- optional: reviews grid will be filled by widget or JS -->
+    <div id="reviewsList" class="r-grid"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  // CHANGE THIS to your absolute API endpoint (HTTPS) if different:
+  const ENDPOINT = 'https://review-app-sge4.onrender.com/api/reviews'; // <-- use /api/submit-review or /api/reviews as your server expects
+
+  const form = document.getElementById('reviewForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const msgEl = document.getElementById('msg');
+  const imgInput = document.getElementById('image');
+  const preview = document.getElementById('imgPreview');
+  const toast = document.getElementById('toast');
+  const reviewsList = document.getElementById('reviewsList');
+
+  function showMsg(text, ok=true) {
+    msgEl.innerText = text;
+    msgEl.style.color = ok ? '#155724' : '#9b2c2c';
+  }
+  function showToast(t) {
+    toast.innerText = t;
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 2500);
+  }
+
+  // preview file
+  imgInput.addEventListener('change', function(){
+    const f = this.files && this.files[0];
+    if(!f) { preview.innerText = 'photo'; preview.style.background = ''; return; }
+    if(f.size > 5 * 1024 * 1024) {
+      showMsg('Image too large (max 5MB)', false);
+      this.value = '';
+      return;
+    }
+    const url = URL.createObjectURL(f);
+    preview.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = 'Preview';
+    img.onload = () => URL.revokeObjectURL(url);
+    preview.appendChild(img);
+    showMsg('');
+  });
+
+  // clear form
+  clearBtn.addEventListener('click', () => {
+    form.reset();
+    preview.innerHTML = 'photo';
+    showMsg('');
+  });
+
+  // submit handler
+  form.addEventListener('submit', async function(e){
     e.preventDefault();
-    const form = e.target;
-    const data = new FormData(form);
-    document.getElementById('msg').innerText = 'Uploading...';
-    try{
-      const resp = await fetch('/api/submit-review', { method:'POST', body: data });
-      const json = await resp.json();
-      if(json.ok) {
-        document.getElementById('msg').innerText = json.message;
+    showMsg('');
+    const name = form.name.value.trim();
+    const text = form.text.value.trim();
+    if(!name || !text) { showMsg('Please enter name and review text', false); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Submitting...';
+
+    const fd = new FormData(form);
+
+    try {
+      const res = await fetch(ENDPOINT, { method: 'POST', body: fd });
+      const json = await res.json();
+      if(res.ok && json.ok) {
+        showMsg(json.message || 'Review submitted — thanks!');
+        showToast('Review submitted');
         form.reset();
+        preview.innerHTML = 'photo';
+        // reload reviews after a short delay (if your GET endpoint returns new review)
+        setTimeout(loadReviews, 700);
       } else {
-        document.getElementById('msg').innerText = json.message || 'Error';
+        const err = (json && json.message) ? json.message : 'Submission failed';
+        showMsg(err, false);
       }
-    } catch(err){
-      document.getElementById('msg').innerText = 'Network error';
+    } catch(err) {
+      console.error(err);
+      showMsg('Network/server error. Try again later.', false);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Submit review';
     }
   });
-  </script>
+
+  // load reviews from API (GET)
+  async function loadReviews() {
+    try {
+      const r = await fetch(ENDPOINT.replace(/\/submit-review\/?$/, '/').replace(/\/?$/, '/api/reviews'), { method:'GET' });
+      const j = await r.json();
+      const rows = j.reviews || j || [];
+      renderReviews(rows.slice(0,12));
+    } catch(e) {
+      // ignore silently
+      // console.error('loadReviews', e);
+    }
+  }
+
+  function renderReviews(reviews){
+    reviewsList.innerHTML = '';
+    reviews.forEach(r => {
+      const card = document.createElement('div'); card.className = 'r-card';
+      if(r.image){
+        const img = document.createElement('img'); img.className = 'r-thumb';
+        img.src = r.image; img.alt = (r.name||'photo');
+        card.appendChild(img);
+      } else {
+        const placeholder = document.createElement('div'); placeholder.className = 'preview'; placeholder.style.height='150px'; placeholder.innerText='photo';
+        card.appendChild(placeholder);
+      }
+      const body = document.createElement('div'); body.className = 'r-body';
+      const n = document.createElement('div'); n.className='r-name'; n.innerText = (r.name || 'Anonymous') + (r.city ? ' — '+r.city : '');
+      const stars = document.createElement('div'); stars.className='r-stars'; stars.innerText = '★'.repeat(r.rating||0) + '☆'.repeat(5-(r.rating||0));
+      const t = document.createElement('div'); t.className='r-text'; t.innerText = r.text || '';
+      body.appendChild(n); body.appendChild(stars); body.appendChild(t);
+      card.appendChild(body);
+      reviewsList.appendChild(card);
+    });
+  }
+
+  // initial load
+  loadReviews();
+
+})();
+</script>
 </body>
 </html>
