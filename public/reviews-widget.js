@@ -28,10 +28,10 @@
     left.style.width = '100%';
 
     left.appendChild(el('label',{}, 'Your Name'));
-    left.appendChild(el('input',{name:'name',type:'text',placeholder:'John'}));
+    left.appendChild(el('input',{name:'name',type:'text',placeholder:'Enter Your Name'}));
 
     left.appendChild(el('label',{}, 'City'));
-    left.appendChild(el('input',{name:'city',type:'text',placeholder:'Chennai'}));
+    left.appendChild(el('input',{name:'city',type:'text',placeholder:'City'}));
 
     left.appendChild(el('label',{}, 'Rating'));
     const sel = el('select',{name:'rating'});
