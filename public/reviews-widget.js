@@ -32,27 +32,35 @@ async function initReviewsWidget(opts){
 
   function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  function cardHtml(r){
-    const avatar = r.image ? `<div class="rp-avatar"><img src="${esc(r.image)}" alt=""></div>` : `<div class="rp-avatar"><img src="https://via.placeholder.com/150?text=User" alt=""></div>`;
-    const loc = r.city ? `<div class="rp-loc">${esc(r.city)}</div>` : '';
-    const short = esc((r.text||'')).length > 220 ? esc(r.text).slice(0,220) + '…' : esc(r.text||'');
-    return `
-      <article class="rp-card" data-id="${r.id}">
-        ${avatar}
-        <div class="rp-body">
-          <div class="rp-name-row">
-            <div>
-              <div class="rp-name">${esc(r.name||'Anonymous')}</div>
-              ${loc}
-            </div>
-            <div class="rp-meta">${starSvg(r.rating||0)}</div>
+  // replace existing cardHtml(r) with this:
+function cardHtml(r){
+  const avatar = r.image
+    ? `<div class="rp-avatar"><img src="${esc(r.image)}" alt=""></div>`
+    : `<div class="rp-avatar"><img src="https://via.placeholder.com/150?text=User" alt=""></div>`;
+
+  // show name (fallback 'Anonymous') and city (fallback empty)
+  const nameHtml = `<div class="rp-name">${esc(r.name || 'Anonymous')}</div>`;
+  const cityHtml = r.city ? `<div class="rp-loc">${esc(String(r.city).toUpperCase())}</div>` : '';
+
+  const short = esc((r.text||'')).length > 220 ? esc(r.text).slice(0,220) + '…' : esc(r.text||'');
+  return `
+    <article class="rp-card" data-id="${r.id}">
+      ${avatar}
+      <div class="rp-body">
+        <div class="rp-name-row">
+          <div style="min-width:0">
+            ${nameHtml}
+            ${cityHtml}
           </div>
-          <div class="rp-text">${short}</div>
-          <div class="rp-cta"><button class="rp-view" data-id="${r.id}">Explore More</button></div>
+          <div class="rp-meta">${starSvg(r.rating||0)}</div>
         </div>
-      </article>
-    `;
-  }
+        <div class="rp-text">${short}</div>
+        <div class="rp-cta"><button class="rp-view" data-id="${r.id}">Explore More</button></div>
+      </div>
+    </article>
+  `;
+}
+
 
   async function fetchReviews(){
     try{
