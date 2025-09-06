@@ -57,11 +57,12 @@ app.post('/api/submit-review', upload.single('image'), (req, res) => {
     const file = req.file;
     if(!name || !text) return res.status(400).json({ ok:false, message: 'Name and review text required' });
     const imagePath = file ? ('/uploads/' + file.filename) : null;
-    const stmt = db.prepare('INSERT INTO reviews (name, city, rating, text, image, approved) VALUES (?,?,?,?,?,0)');
+    const stmt = db.prepare('INSERT INTO reviews (name, city, rating, text, image, approved) VALUES (?,?,?,?,?,1)');
     stmt.run(name, city || '', rating ? parseInt(rating) : null, text, imagePath, function(err){
       if(err) return res.status(500).json({ ok:false, message: 'DB error' });
-      res.json({ ok:true, message: 'Thank you! Your review is submitted for approval.' });
+      res.json({ ok:true, message: 'Thank you! Your review is published.' });
     });
+
   } catch(e) {
     console.error(e);
     res.status(500).json({ ok:false, message: 'Server error' });
