@@ -21,19 +21,24 @@
   }
 
   function renderReviews(container, reviews) {
-    const grid = createEl('div', { class: 'r-grid' });
-    reviews.forEach(r => {
-      const card = createEl('div', { class: 'r-card' });
-      const img = r.image ? createEl('img', { src: r.image, alt: 'photo', class: 'r-photo' }) : null;
-      const name = createEl('div', { class: 'r-name', html: `<strong>${escapeHtml(r.name || '')}</strong> — ${escapeHtml(r.city || '')}` });
-      const rating = createEl('div', { class: 'r-rating', html: `Rating: ${escapeHtml(String(r.rating || ''))}` });
-      const text = createEl('div', { class: 'r-text', html: escapeHtml(r.text || '') });
-      if (img) card.appendChild(img);
-      card.appendChild(name); card.appendChild(rating); card.appendChild(text);
-      grid.appendChild(card);
-    });
-    container.appendChild(grid);
-  }
+  const grid = createEl('div', { class: 'r-grid' });
+  reviews.forEach(r => {
+    const card = createEl('div', { class: 'r-card' });
+    const img = r.image ? createEl('img', { src: r.image, alt: 'photo', class: 'r-photo' }) : null;
+    const name = createEl('div', { class: 'r-name', html: `${escapeHtml(r.name || '')} — ${escapeHtml(r.city || '')}` });
+    const rating = createEl('div', { class: 'r-rating' });
+    const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
+    rating.innerHTML = stars;
+    const text = createEl('div', { class: 'r-text', html: escapeHtml(r.text || '') });
+    if (img) card.appendChild(img);
+    card.appendChild(name); 
+    card.appendChild(rating); 
+    card.appendChild(text);
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
 
   function escapeHtml(s) {
     return s
