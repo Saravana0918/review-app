@@ -104,10 +104,19 @@
 
     const body = el('div',{cls:'r-body'});
     const top = el('div',{cls:'r-top'});
+    // left side → reviewer name
     const name = el('div',{cls:'r-name'}, escapeHtml(r.name || 'Anonymous'));
-    const city = el('div',{cls:'r-city'}, escapeHtml(r.city || ''));
+
+    // right side → customer name (if available), illena fallback to city or name
+    const customerName = (r.customer_name || r.name || r.city || '').toString().trim();
+    let rightEl = null;
+    if (customerName) {
+      rightEl = el('div',{cls:'r-city'}, 'Customer: ' + escapeHtml(customerName));
+    }
+
     top.appendChild(name);
-    if(city.innerText) top.appendChild(city);
+    if (rightEl) top.appendChild(rightEl);
+
     body.appendChild(top);
 
     const stars = el('div',{cls:'r-stars'}, '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0)));
