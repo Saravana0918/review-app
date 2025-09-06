@@ -111,7 +111,7 @@
     const customerName = (r.customer_name || r.name || r.city || '').toString().trim();
     let rightEl = null;
     if (customerName) {
-      rightEl = el('div',{cls:'r-city'}, 'Customer: ' + escapeHtml(customerName));
+      rightEl = el('div',{cls:'r-city'}, + escapeHtml(customerName));
     }
 
     top.appendChild(name);
