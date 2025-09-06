@@ -1,143 +1,203 @@
-// public/reviews-widget.js
-(function () {
-  // default options (override when init called)
-  let opt = {
-    endpoint: '/api/reviews',
-    containerId: 'reviews-container',
-    perPage: 12
-  };
+// public/reviews-widget.js (replace)
+(function(){
+  let opt = { endpoint: '/api/reviews', containerId: 'reviews-container', perPage: 12 };
 
-  function createEl(tag, attrs = {}, children = []) {
-    const el = document.createElement(tag);
-    Object.keys(attrs).forEach(k => {
-      if (k === 'html') el.innerHTML = attrs[k];
+  function el(tag, attrs={}, html='') {
+    const e = document.createElement(tag);
+    for (const k in attrs) {
+      if (k === 'cls') e.className = attrs[k];
       else if (k === 'on') {
-        // { click: fn }
-        Object.keys(attrs[k]).forEach(evt => el.addEventListener(evt, attrs[k][evt]));
-      } else el.setAttribute(k, attrs[k]);
-    });
-    children.forEach(c => el.appendChild(c));
-    return el;
+        for (let ev in attrs[k]) e.addEventListener(ev, attrs[k][ev]);
+      } else e.setAttribute(k, attrs[k]);
+    }
+    if (html) e.innerHTML = html;
+    return e;
   }
 
-  function renderReviews(container, reviews) {
-  const grid = createEl('div', { class: 'r-grid' });
-  reviews.forEach(r => {
-    const card = createEl('div', { class: 'r-card' });
-    const img = r.image ? createEl('img', { src: r.image, alt: 'photo', class: 'r-photo' }) : null;
-    const name = createEl('div', { class: 'r-name', html: `${escapeHtml(r.name || '')} — ${escapeHtml(r.city || '')}` });
-    const rating = createEl('div', { class: 'r-rating' });
-    const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
-    rating.innerHTML = stars;
-    const text = createEl('div', { class: 'r-text', html: escapeHtml(r.text || '') });
-    if (img) card.appendChild(img);
-    card.appendChild(name); 
-    card.appendChild(rating); 
-    card.appendChild(text);
-    grid.appendChild(card);
-  });
-  container.appendChild(grid);
-}
-
-
-  function escapeHtml(s) {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
+  function escapeHtml(s=''){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   function renderForm(container) {
-    const form = createEl('form', { id: 'reviewSubmitForm', enctype: 'multipart/form-data' });
-    form.innerHTML = `
-      <h3>Submit your review</h3>
-      <label> Your name <input name="name" required /></label><br/>
-      <label> City <input name="city" /></label><br/>
-      <label> Rating
-        <select name="rating">
-          <option value="5">5 - Excellent</option>
-          <option value="4">4 - Very good</option>
-          <option value="3">3 - Good</option>
-          <option value="2">2 - Fair</option>
-          <option value="1">1 - Poor</option>
-        </select>
-      </label><br/>
-      <label> Review <textarea name="text" rows="4" required></textarea></label><br/>
-      <label> Photo (optional) <input type="file" name="image" accept="image/*" /></label><br/>
-      <button type="submit">Submit review</button>
-      <div id="r-msg" style="margin-top:10px"></div>
-    `;
-    form.addEventListener('submit', function (e) {
+    const card = el('div',{cls:'r-form-card'});
+    const h = el('h3',{}, 'Submit your review');
+    card.appendChild(h);
+
+    // form layout wrapper
+    const form = el('form',{id:'reviewSubmitForm', enctype:'multipart/form-data'});
+    // left fields
+    const left = document.createElement('div');
+    left.style.width = '100%';
+
+    left.appendChild(el('label',{}, 'Your Name'));
+    left.appendChild(el('input',{name:'name',type:'text',placeholder:'John'}));
+
+    left.appendChild(el('label',{}, 'City'));
+    left.appendChild(el('input',{name:'city',type:'text',placeholder:'Chennai'}));
+
+    left.appendChild(el('label',{}, 'Rating'));
+    const sel = el('select',{name:'rating'});
+    ['5 - Excellent','4 - Very good','3 - Good','2 - Fair','1 - Poor'].forEach((t,i)=>{
+      const optn = el('option',{value:5-i}, t);
+      sel.appendChild(optn);
+    });
+    left.appendChild(sel);
+
+    left.appendChild(el('label',{}, 'Review'));
+    left.appendChild(el('textarea',{name:'text',placeholder:'Share your experience...'}));
+
+    // right column: file preview + file input
+    const right = el('div',{cls:'r-form-file'});
+    right.style.width = '220px';
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    right.style.gap = '10px';
+
+    const preview = el('div',{cls:'r-empty'}, 'photo');
+    preview.style.height = '140px';
+    right.appendChild(preview);
+
+    right.appendChild(el('label',{}, 'Photo (optional)'));
+    const fileInp = el('input',{type:'file', name:'image', accept:'image/*'});
+    right.appendChild(fileInp);
+
+    // show preview on file select
+    fileInp.addEventListener('change', function(e){
+      const f = this.files && this.files[0];
+      if(!f){ preview.innerText='photo'; preview.style.background=''; return; }
+      const url = URL.createObjectURL(f);
+      preview.innerHTML = '';
+      const img = el('img',{cls:'r-thumb', src: url});
+      img.onload = ()=> URL.revokeObjectURL(url);
+      preview.appendChild(img);
+    });
+
+    // row wrapper
+    const row = el('div',{cls:'r-form-row'});
+    row.appendChild(left);
+    row.appendChild(right);
+
+    form.appendChild(row);
+
+    const submitRow = el('div',{cls:'r-submit-row'});
+    const btn = el('button',{type:'submit', cls:'r-submit-btn'}, 'Submit review');
+    const msg = el('div',{cls:'r-msg'}, '');
+    submitRow.appendChild(btn);
+    submitRow.appendChild(msg);
+    form.appendChild(submitRow);
+
+    form.addEventListener('submit', function(e){
       e.preventDefault();
-      submitForm(form);
+      submitForm(new FormData(form), btn, msg);
     });
-    container.appendChild(form);
+
+    card.appendChild(form);
+    container.appendChild(card);
   }
 
-  function submitForm(form) {
-    const msg = document.getElementById('r-msg');
-    msg.innerText = 'Submitting...';
-    const fd = new FormData(form);
+  function createCard(r){
+    const card = el('div',{cls:'r-card'});
+    if(r.image){
+      const img = el('img',{cls:'r-thumb', src: r.image, loading: 'lazy', alt: escapeHtml(r.name || 'photo')});
+      card.appendChild(img);
+    } else {
+      card.appendChild(el('div',{cls:'r-empty'}, 'photo'));
+    }
 
-    fetch(opt.endpoint, {
-      method: 'POST',
-      body: fd,
-      // DO NOT set Content-Type header for multipart FormData - browser will set boundary
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.ok) {
-        msg.innerText = 'Thanks — review submitted!';
-        // optionally re-fetch reviews to show latest
-        loadAndRender();
-      } else {
-        msg.innerText = data && data.message ? data.message : 'Submission failed';
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      msg.innerText = 'Error submitting review. Check console.';
-    });
+    const body = el('div',{cls:'r-body'});
+    const top = el('div',{cls:'r-top'});
+    const name = el('div',{cls:'r-name'}, escapeHtml(r.name || 'Anonymous'));
+    const city = el('div',{cls:'r-city'}, escapeHtml(r.city || ''));
+    top.appendChild(name);
+    if(city.innerText) top.appendChild(city);
+    body.appendChild(top);
+
+    const stars = el('div',{cls:'r-stars'}, '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0)));
+    body.appendChild(stars);
+
+    const txt = el('div',{cls:'r-text'}, escapeHtml(r.text || ''));
+    body.appendChild(txt);
+
+    card.appendChild(body);
+    return card;
   }
 
-  function empty(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  function renderReviews(container, reviews){
+    const grid = el('div',{cls:'r-grid'});
+    reviews.forEach(r => grid.appendChild(createCard(r)));
+    container.appendChild(grid);
+  }
 
-  function loadAndRender() {
+  function loadAndRender(){
     const container = document.getElementById(opt.containerId);
-    if (!container) return console.warn('Reviews container not found:', opt.containerId);
-    empty(container);
+    if(!container) return console.warn('reviews container not found');
+    container.innerHTML = '';
+    renderForm(container);
 
-    // show loader
-    const loader = createEl('div', { class: 'r-loader', html: 'Loading reviews...' });
+    // loader
+    const loader = el('div',{}, 'Loading reviews...');
     container.appendChild(loader);
 
     fetch(opt.endpoint)
       .then(r => r.json())
       .then(json => {
-        empty(container);
-        const reviews = json.reviews || [];
-        renderForm(container);
-        if (reviews.length === 0) {
-          container.appendChild(createEl('div', { html: '<p>No reviews yet — be first!</p>' }));
+        container.removeChild(loader);
+        if(!json || !Array.isArray(json.reviews) && !Array.isArray(json)) {
+          const rows = json.reviews || [];
+          renderReviews(container, rows.slice(0, opt.perPage));
         } else {
-          renderReviews(container, reviews.slice(0, opt.perPage));
+          // older format support
+          const rows = json.reviews || json;
+          renderReviews(container, rows.slice(0, opt.perPage));
         }
       })
       .catch(err => {
-        empty(container);
-        container.appendChild(createEl('div', { html: '<p>Error loading reviews.</p>' }));
-        console.error('load reviews error', err);
+        console.error(err);
+        loader.innerText = 'Failed to load reviews.';
       });
   }
 
-  // public init
-  window.initReviewWidget = function (options) {
-    opt = Object.assign(opt, options || {});
-    // allow path-only endpoints, convert to absolute if needed
-    if (window.location.protocol === 'https:' && opt.endpoint && opt.endpoint.indexOf('//') === -1 && opt.endpoint.indexOf('http') !== 0) {
-      // if you provided relative path, leave it. (Shopify will call from customer's domain & CORS matters)
+  function submitForm(fd, btn, msgEl){
+    btn.disabled = true;
+    msgEl.innerText = 'Submitting...';
+
+    // POST to /api/submit-review (server supports both /api/reviews and /api/submit-review)
+    fetch(opt.endpoint.replace(/\/$/, '') , {
+      method: 'POST',
+      body: fd
+    }).then(r => r.json())
+      .then(json => {
+        btn.disabled = false;
+        if(json && json.ok){
+          msgEl.innerText = 'Thanks! Review submitted.';
+          // show toast
+          showToast('Review submitted');
+          // reload reviews after small delay
+          setTimeout(loadAndRender, 900);
+        } else {
+          msgEl.innerText = (json && json.message) ? json.message : 'Submission failed';
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        btn.disabled = false;
+        msgEl.innerText = 'Error submitting. Check console.';
+      });
+  }
+
+  function showToast(text){
+    let t = document.querySelector('.r-toast');
+    if(!t){
+      t = el('div',{cls:'r-toast'}, text);
+      document.body.appendChild(t);
     }
-    // Kickoff
+    t.innerText = text;
+    t.classList.add('show');
+    setTimeout(()=> t.classList.remove('show'), 3000);
+  }
+
+  window.initReviewWidget = function(options){
+    opt = Object.assign(opt, options || {});
+    // if endpoint is /api/reviews on same host, use absolute (Shopify page is different host)
+    // so prefer absolute endpoint passed in init
     loadAndRender();
   };
 })();
