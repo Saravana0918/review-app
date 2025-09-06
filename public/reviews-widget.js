@@ -1,129 +1,149 @@
 // reviews-widget.js
-// Simple, dependency-free reviews widget
-// Usage: initReviewsWidget({ endpoint: 'https://.../api/reviews', containerId: 'reviews-container' })
+// dependency-free reviews widget with horizontal carousel and neat cards
+async function initReviewsWidget(opts){
+  const endpoint = opts.endpoint;
+  const containerId = opts.containerId || 'reviews-container';
+  const perPage = opts.perPage || 12;
 
-(function(){
-  function qs(id){ return document.getElementById(id); }
+  const container = document.getElementById(containerId);
+  if(!container){ console.error('reviews widget container missing', containerId); return; }
 
-  function starHtml(n){
-    n = Math.max(0, Math.min(5, parseInt(n||0)));
+  // shell
+  container.innerHTML = `
+    <section class="rp-section">
+      <h2 class="rp-title">What people think about us</h2>
+      <p class="rp-sub">Photos, ratings & short stories from our customers</p>
+      <div class="rp-carousel-wrap">
+        <button class="rp-arrow rp-left" aria-label="scroll left">‹</button>
+        <div class="rp-carousel-viewport"><div id="${containerId}-grid" class="rp-grid"></div></div>
+        <button class="rp-arrow rp-right" aria-label="scroll right">›</button>
+      </div>
+    </section>
+  `;
+
+  const grid = document.getElementById(containerId+'-grid');
+  const left = container.querySelector('.rp-left');
+  const right = container.querySelector('.rp-right');
+
+  function renderStars(n){
+    n = parseInt(n) || 0;
     let s = '';
-    for(let i=0;i<5;i++){
-      s += (i < n) ? '★' : '☆';
-    }
-    return '<span class="rp-stars" aria-hidden="true">'+s+'</span>';
+    for(let i=1;i<=5;i++) s += (i<=n) ? '★' : '☆';
+    return `<span class="rp-stars" aria-hidden="true">${s}</span>`;
   }
 
-  function timeAgo(dateStr){
-    if(!dateStr) return '';
-    const t = Date.parse(dateStr);
-    if(isNaN(t)) return '';
-    const sec = Math.floor((Date.now() - t)/1000);
-    if(sec < 60) return sec + 's ago';
-    if(sec < 3600) return Math.floor(sec/60) + 'm ago';
-    if(sec < 86400) return Math.floor(sec/3600) + 'h ago';
-    return Math.floor(sec/86400) + 'd ago';
-  }
+  function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  function createCard(r){
-    const img = r.image ? `<div class="rp-thumb"><img loading="lazy" src="${r.image}" alt="${escapeHtml(r.name)} review image"></div>` : '';
-    const city = r.city ? `<div class="rp-city">${escapeHtml(r.city)}</div>` : '';
+  function cardHtml(r){
+    const img = r.image ? `<div class="rp-avatar"><img src="${esc(r.image)}" alt="customer image"></div>` : `<div class="rp-avatar"><img src="https://via.placeholder.com/150?text=User" alt="user"></div>`;
+    const loc = r.city ? `<div class="rp-loc">${esc(r.city)}</div>` : '';
+    const short = esc(r.text || '').length > 220 ? esc(r.text).slice(0,220) + '…' : esc(r.text || '');
     return `
       <article class="rp-card">
         ${img}
         <div class="rp-body">
-          <div class="rp-head">
-            <strong class="rp-name">${escapeHtml(r.name)}</strong>
-            ${r.verified ? '<span class="rp-verified">✔ Verified</span>' : ''}
-            <div class="rp-meta">${starHtml(r.rating)} <span class="rp-date">${timeAgo(r.created_at)}</span></div>
+          <div class="rp-name-row">
+            <div>
+              <div class="rp-name">${esc(r.name || 'Anonymous')}</div>
+              ${loc}
+            </div>
+            <div class="rp-meta">${renderStars(r.rating)}</div>
           </div>
-          ${city}
-          <p class="rp-text">${escapeHtml(r.text)}</p>
+          <div class="rp-text">${short}</div>
+          <div class="rp-cta"><button class="rp-view" data-id="${r.id}">Explore More</button></div>
         </div>
       </article>
     `;
   }
 
-  function escapeHtml(s){
-    if(!s) return '';
-    return String(s)
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'", '&#39;');
+  // fetch
+  async function fetchReviews(){
+    try{
+      grid.innerHTML = '<div style="padding:30px;color:#666">Loading reviews…</div>';
+      const res = await fetch(endpoint, {cache:'no-store'});
+      const j = await res.json();
+      if(!j.ok){ grid.innerHTML = '<div style="padding:20px;color:#666">No reviews found.</div>'; return; }
+      const reviews = (j.reviews || []).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+      if(reviews.length === 0){ grid.innerHTML = '<div style="padding:20px;color:#666">No reviews yet. Be first!</div>'; return; }
+      // build cards
+      grid.innerHTML = reviews.slice(0, perPage).map(cardHtml).join('');
+      // optionally add more if larger perPage requested
+      initInteractions();
+      updateArrows();
+    }catch(err){
+      console.error(err);
+      grid.innerHTML = '<div style="padding:20px;color:#666">Unable to load reviews.</div>';
+    }
   }
 
-  // Public init function
-  window.initReviewsWidget = function(opts){
-    if(!opts || !opts.endpoint || !opts.containerId) {
-      console.error('initReviewsWidget: endpoint and containerId required');
-      return;
-    }
-    const endpoint = opts.endpoint;
-    const container = qs(opts.containerId);
-    if(!container){
-      console.error('initReviewsWidget: container not found:', opts.containerId);
-      return;
-    }
+  // interactions: arrows, buttons
+  function initInteractions(){
+    // arrow scroll amount
+    const scrollBy = () => Math.floor(grid.clientWidth * 0.75);
+    left.onclick = ()=> grid.scrollBy({ left: -scrollBy(), behavior:'smooth' });
+    right.onclick = ()=> grid.scrollBy({ left: scrollBy(), behavior:'smooth' });
 
-    // create shell
-    container.innerHTML = `
-      <div class="rp-widget">
-        <div id="${opts.containerId}-grid" class="rp-grid"></div>
-        <div class="rp-controls"><button id="${opts.containerId}-load" class="rp-load">Load more</button></div>
-      </div>
-    `;
+    // swipe/mouse wheel for nicer UX
+    grid.addEventListener('wheel', (e)=>{
+      if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){ e.preventDefault(); grid.scrollBy({ left: e.deltaY, behavior:'auto' }); }
+    }, { passive:false });
 
-    const grid = qs(opts.containerId+'-grid');
-    const loadBtn = qs(opts.containerId+'-load');
-
-    let allReviews = [];
-    let perPage = opts.perPage || 6;
-    let page = 0;
-
-    async function fetchReviews(){
-      try{
+    // "Explore More" button click — simple lightbox/show full text
+    grid.querySelectorAll('.rp-view').forEach(btn=>{
+      btn.addEventListener('click', async (ev)=>{
+        const id = ev.currentTarget.dataset.id;
+        // find review data (simple)
         const res = await fetch(endpoint, {cache:'no-store'});
         const j = await res.json();
-        if(!j.ok) {
-          grid.innerHTML = `<div class="rp-empty">No reviews found.</div>`;
-          return;
-        }
-        allReviews = j.reviews || [];
-        // newest first
-        allReviews.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
-        page = 0;
-        renderPage();
-      }catch(err){
-        console.error(err);
-        grid.innerHTML = `<div class="rp-empty">Unable to load reviews.</div>`;
-      }
-    }
+        const r = (j.reviews || []).find(x=> String(x.id) === String(id));
+        if(!r) return;
+        showModal(r);
+      });
+    });
 
-    function renderPage(){
-      const start = page * perPage;
-      const end = start + perPage;
-      const slice = allReviews.slice(start, end);
-      if(page === 0) grid.innerHTML = '';
-      slice.forEach(r => grid.insertAdjacentHTML('beforeend', createCard(r)));
-      page++;
-      // hide load more if nothing left
-      if(end >= allReviews.length) loadBtn.style.display = 'none';
-      else loadBtn.style.display = 'inline-block';
-      // add accessible focus
-    }
+    // hide arrows on mobile (CSS does but ensure update)
+    grid.addEventListener('scroll', updateArrows);
+    window.addEventListener('resize', updateArrows);
+  }
 
-    loadBtn.addEventListener('click', ()=> renderPage());
+  function updateArrows(){
+    // hide left/right when not scrollable
+    const wrap = container.querySelector('.rp-carousel-viewport');
+    if(!wrap) return;
+    const canScroll = grid.scrollWidth > wrap.clientWidth + 10;
+    left.style.display = canScroll ? 'flex' : 'none';
+    right.style.display = canScroll ? 'flex' : 'none';
+  }
 
-    // initial fetch
-    fetchReviews();
+  // modal to show full review when "Explore More"
+  function showModal(r){
+    // create overlay
+    const ov = document.createElement('div');
+    ov.style.position='fixed'; ov.style.left=0; ov.style.top=0; ov.style.right=0; ov.style.bottom=0;
+    ov.style.background='rgba(0,0,0,0.55)'; ov.style.display='flex'; ov.style.alignItems='center'; ov.style.justifyContent='center';
+    ov.style.zIndex=99999;
+    ov.innerHTML = `
+      <div style="max-width:820px;width:92%;background:#fff;border-radius:12px;padding:22px;box-shadow:0 20px 60px rgba(10,15,30,0.25);">
+        <div style="display:flex;gap:18px;align-items:flex-start">
+          <div style="width:120px;height:120px;border-radius:12px;overflow:hidden"><img src="${r.image||''}" style="width:100%;height:100%;object-fit:cover"></div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:18px">${r.name||'Anonymous'}</div>
+            <div style="color:#777;margin-top:6px">${r.city||''} • ${new Date(r.created_at||'').toLocaleDateString()}</div>
+            <div style="margin-top:10px;color:#f5a623">${'★'.repeat(r.rating||0)}${'☆'.repeat(5-(r.rating||0))}</div>
+            <div style="margin-top:12px;color:#333;line-height:1.5">${r.text||''}</div>
+            <div style="margin-top:18px;text-align:right"><button style="background:#0b66ff;color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer">Close</button></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    ov.querySelector('button').addEventListener('click', ()=> ov.remove());
+    ov.addEventListener('click', (e)=> { if(e.target === ov) ov.remove(); });
+  }
 
-    // public refresh hook
-    if(opts.onLoad) opts.onLoad();
-    return {
-      refresh: fetchReviews
-    };
-  };
+  // initial fetch
+  fetchReviews();
 
-})();
+  // expose refresh
+  return { refresh: fetchReviews };
+}
